@@ -10,6 +10,17 @@ on:
   push:
     tags:
       - "v*.*.*"
+  # Lets bump-version.yml (which commits/tags using the default GITHUB_TOKEN)
+  # explicitly kick off a build. A tag pushed with GITHUB_TOKEN does NOT
+  # trigger other workflows' `on: push: tags` events (GitHub's own loop-
+  # prevention rule) — workflow_dispatch is the documented exception, so
+  # bump-version.yml calls `gh workflow run release.yml` instead of relying
+  # on its tag push to be picked up here.
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Tag to build and release (e.g. v1.0.1)"
+        required: true
 
 permissions:
   contents: write
@@ -19,6 +30,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag_name || github.ref }}
 
       - uses: actions/setup-python@v5
         with:
@@ -32,7 +45,8 @@ jobs:
       - name: Check tag matches VERSION and installer.iss
         shell: bash
         run: |
-          tag_version="${GITHUB_REF_NAME#v}"
+          tag_version="${{ inputs.tag_name || github.ref_name }}"
+          tag_version="${tag_version#v}"
           file_version="$(cat VERSION | tr -d '[:space:]')"
           iss_version="$(grep -oP '(?<=#define MyAppVersion ")[^"]+' installer/installer.iss)"
           echo "tag=$tag_version VERSION=$file_version installer.iss=$iss_version"
