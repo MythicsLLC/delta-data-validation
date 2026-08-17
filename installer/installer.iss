@@ -8,7 +8,7 @@
 ; that desktop_app.py's auto-updater compares against.
 
 #define MyAppName "DELTA Data Validation Console"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "Mythics"
 #define MyAppExeName "DeltaDataValidation.exe"
 
