@@ -89,12 +89,18 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 /* ---------------------------------------------------------------------- */
-/* Custom OS titlebar — the window is frameless; this IS the caption bar   */
+/* Chrome stack — titlebar + update banner + in-content topbar stick       */
+/* together as one unit, so the banner can show/hide without any of them   */
+/* needing to know each other's height (see index.html).                   */
 /* ---------------------------------------------------------------------- */
 :root { --titlebar-h: 38px; }
 
+.chrome-stack { position: sticky; top: 0; z-index: 70; }
+
+/* ---------------------------------------------------------------------- */
+/* Custom OS titlebar — the window is frameless; this IS the caption bar   */
+/* ---------------------------------------------------------------------- */
 .ostitlebar {
-  position: sticky; top: 0; z-index: 70;
   height: var(--titlebar-h);
   display: flex; align-items: stretch;
   background: var(--ink); color: var(--paper);
@@ -148,10 +154,33 @@ button { font-family: inherit; cursor: pointer; }
 body.is-maximized .ez { display: none; }
 
 /* ---------------------------------------------------------------------- */
+/* Update banner — GitHub-Desktop-style "a new version is available" bar   */
+/* ---------------------------------------------------------------------- */
+.update-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 10px 20px;
+  background: var(--accent); color: var(--accent-ink);
+  border-bottom: 3px solid var(--ink);
+  font-size: 12.5px; font-weight: 700;
+  animation: bannerDrop .3s var(--ease-snap);
+}
+@keyframes bannerDrop { from { transform: translateY(-100%); } to { transform: none; } }
+.update-banner__text { font-family: var(--mono); letter-spacing: .01em; }
+.update-banner__actions { display: flex; gap: 10px; flex-shrink: 0; }
+.update-banner__btn {
+  border: 1.5px solid var(--accent-ink); background: transparent; color: var(--accent-ink);
+  padding: 5px 12px; font-size: 11.5px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .03em; cursor: pointer; transition: background .12s var(--ease-hard);
+}
+.update-banner__btn:hover { background: rgba(255,246,234,.18); }
+.update-banner__btn--primary { background: var(--ink); border-color: var(--ink); }
+.update-banner__btn--primary:hover { background: #2a251c; }
+.update-banner__btn:disabled { opacity: .5; cursor: default; }
+
+/* ---------------------------------------------------------------------- */
 /* Topbar                                                                   */
 /* ---------------------------------------------------------------------- */
 .topbar {
-  position: sticky; top: var(--titlebar-h); z-index: 50;
   display: flex; align-items: center; gap: 28px;
   padding: 16px 28px;
   background: var(--paper);

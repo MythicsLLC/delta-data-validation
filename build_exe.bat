@@ -1,6 +1,6 @@
 @echo off
 REM Builds a single-file Windows .exe for the DELTA Data Validation Console.
-REM Run from this directory (StandaloneApp\). Output: dist\DeltaDataValidation.exe
+REM Run from the repo root. Output: dist\DeltaDataValidation.exe
 REM
 REM Requires the Microsoft Edge WebView2 Runtime (preinstalled on Windows 11
 REM and most updated Windows 10 machines). The UI is plain HTML/CSS/JS in
@@ -31,6 +31,7 @@ python -m PyInstaller ^
     --name DeltaDataValidation ^
     --icon "webapp\assets\icon.ico" ^
     --add-data "webapp;webapp" ^
+    --add-data "VERSION;." ^
     --collect-all polars ^
     --collect-all python_calamine ^
     --collect-all fastexcel ^

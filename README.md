@@ -1,13 +1,22 @@
-# DELTA — Data Validation Console (Standalone)
+# DELTA — Data Validation Console
 
-A single-file Windows `.exe` with a fully animated, modern desktop UI that
-runs the same data-comparison engine as `Server/Main.py`'s post-validation
-feature (the term used internally and in this repo's history — the app
-itself calls it "Data Validation") — entirely offline, no FastAPI server,
-no browser tab, no network calls of any kind.
+A single-file Windows `.exe` with a fully animated, modern desktop UI for
+comparing two data exports (Source vs Target) column-by-column — no FastAPI
+server, no browser tab required, and your data never leaves the machine.
+
+Originally split out of Mythics' `Project_Charlie_Main` monorepo, where the
+same comparison engine is called "post-validation" (`Server/Main.py`'s
+`_run_validation_job`) — `validation_core.py` here is a dependency-free port
+of that logic with no shared import, so if that engine changes upstream this
+needs to be re-diffed and re-ported by hand.
 
 The window is frameless with no OS titlebar; the app draws and themes its
 own, including the minimize/maximize/close controls.
+
+**The only network call anywhere in this app** is a startup check against
+this repo's GitHub Releases to see if a newer version is available (see
+[Auto-update](#auto-update) below) — nothing about your files, your
+comparisons, or their results is ever transmitted anywhere.
 
 ## Architecture
 
@@ -73,6 +82,41 @@ Output: `dist\DeltaDataValidation_Setup.exe`. It:
 be bumped together by hand — Inno Setup's preprocessor has no plain-text
 file-read primitive, so there's no single source of truth for the version
 string.
+
+## Auto-update
+
+On every launch, once the UI is visible, `desktop_app.py`'s
+`Api.check_for_updates()` does a single `GET` against
+`api.github.com/repos/MythicsLLC/delta-data-validation/releases/latest`
+(6s timeout, `urllib.request` — no extra dependency) and compares its
+`tag_name` against the bundled `VERSION` file. Any failure — offline,
+DNS, GitHub rate limit, whatever — is swallowed silently; there is no
+error state for "couldn't check," because staying usable offline is the
+whole point of the app.
+
+If the release is newer and has a `*_Setup.exe` asset attached, a GitHub-
+Desktop-style banner slides in (`__onUpdateAvailable` → `webapp/app.js`)
+with **Update & Restart** / **Later**. Clicking Update:
+
+1. Downloads the installer to `%TEMP%`, streaming progress into the banner.
+2. Spawns a small detached `cmd.exe` helper that waits ~2s, runs the new
+   installer with `/SILENT /NORESTART /SUPPRESSMSGBOXES`, then launches the
+   freshly-installed exe. It's detached specifically so it outlives step 3.
+3. Closes this app's own window — which goes through the same clean-
+   shutdown path as a normal close (`window.events.closing`/`closed` in
+   `main()`, ending in `os._exit(0)`).
+
+`installer.iss` also sets `CloseApplications=yes` as a safety net for
+someone manually re-running `Setup.exe` while the app happens to be open —
+by the time that matters in the auto-update flow above, step 3 has already
+closed it, so it's a no-op in practice.
+
+**Cutting a release** that the auto-updater will pick up: bump `VERSION`
+and `installer/installer.iss`'s `AppVersion` together, rebuild
+(`build_exe.bat` then `installer\build_installer.bat`), then
+`gh release create vX.Y.Z dist/DeltaDataValidation_Setup.exe --title vX.Y.Z --notes "..."`
+— the tag must be `vX.Y.Z` (the updater strips a leading `v` before
+comparing) and the asset filename must keep the `_Setup.exe` suffix.
 
 ## Design
 

@@ -1,9 +1,11 @@
 ; DELTA — Data Validation Console — Windows installer.
 ; Compiled with Inno Setup 6 (ISCC.exe). See build_installer.bat.
 ;
-; NOTE: AppVersion below and StandaloneApp/VERSION must be bumped together —
-; there's no single source of truth (Inno's preprocessor has no plain-text
-; file-read primitive), so this is a manually-kept-in-sync duplicate.
+; NOTE: AppVersion below and the repo-root VERSION file must be bumped
+; together — there's no single source of truth (Inno's preprocessor has no
+; plain-text file-read primitive), so this is a manually-kept-in-sync
+; duplicate. AppVersion here also becomes the GitHub release tag (vX.Y.Z)
+; that desktop_app.py's auto-updater compares against.
 
 #define MyAppName "DELTA Data Validation Console"
 #define MyAppVersion "1.0.0"
@@ -23,6 +25,12 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=admin
+; Safety net for "double-clicked Setup.exe while the app was already
+; running" — the auto-update path (desktop_app.py's
+; _download_and_install_worker) already closes the app itself before
+; launching Setup, so in that flow this is a no-op by the time it runs.
+CloseApplications=yes
+CloseApplicationsFilter=*.exe
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\dist
 OutputBaseFilename=DeltaDataValidation_Setup

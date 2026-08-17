@@ -648,6 +648,57 @@
   }
 
   /* ---------------------------------------------------------------- */
+  /* Auto-update banner — GitHub-Desktop-style "update available" bar.  */
+  /* desktop_app.py's Api.check_for_updates() runs once per launch and  */
+  /* calls window.__onUpdateAvailable(...) here if a newer release      */
+  /* exists; everything below is just reacting to those pushes.         */
+  /* ---------------------------------------------------------------- */
+  function initUpdateBanner() {
+    const banner = $('updateBanner');
+    const text = $('updateBannerText');
+    const btnNow = $('btnUpdateNow');
+    const btnLater = $('btnUpdateLater');
+    let downloadUrl = null;
+
+    btnLater.addEventListener('click', () => { banner.hidden = true; });
+
+    btnNow.addEventListener('click', async () => {
+      if (!downloadUrl) return;
+      btnNow.disabled = true;
+      btnLater.disabled = true;
+      text.textContent = 'Downloading update… 0%';
+      try {
+        await callApi('download_and_install_update', downloadUrl);
+      } catch (err) {
+        text.textContent = `Update failed: ${err.message || err}`;
+        btnNow.disabled = false;
+        btnLater.disabled = false;
+      }
+    });
+
+    window.__onUpdateAvailable = (version, url, _sizeBytes, releaseUrl) => {
+      downloadUrl = url;
+      text.textContent = `DELTA v${version} is available.`;
+      void releaseUrl; // not linked out to yet; reserved for a future "What's new" click-through
+      banner.hidden = false;
+    };
+
+    window.__onUpdateDownloadProgress = (pct) => {
+      text.textContent = `Downloading update… ${pct}%`;
+    };
+
+    window.__onUpdateReadyToInstall = () => {
+      text.textContent = 'Installing — the app will restart automatically…';
+    };
+
+    window.__onUpdateError = (message) => {
+      text.textContent = `Update failed: ${message}`;
+      btnNow.disabled = false;
+      btnLater.disabled = false;
+    };
+  }
+
+  /* ---------------------------------------------------------------- */
   /* Welcome / init dialog                                              */
   /* ---------------------------------------------------------------- */
   const WELCOME_SKIP_KEY = 'delta.skipWelcome';
@@ -688,6 +739,7 @@
   /* Boot                                                                */
   /* ---------------------------------------------------------------- */
   initTitlebar();
+  initUpdateBanner();
   initWelcome();
   initReveal();
   initDropzones();

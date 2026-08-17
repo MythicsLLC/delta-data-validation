@@ -4,15 +4,14 @@ brutalist inspection-manifest palette — cream paper, ink borders, hazard-
 orange stripes — so the installer reads as part of the same product as the
 app, not a generic default wizard. Re-run this after favicon.png changes.
 
-Usage: python gen_assets.py   (run from StandaloneApp/installer/)
+Usage: python gen_assets.py   (run from installer/, i.e. repo_root/installer/)
 """
-import math
 import os
 
 from PIL import Image, ImageDraw, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+REPO_ROOT = os.path.abspath(os.path.join(HERE, ".."))
 OUT_DIR = os.path.join(HERE, "assets")
 LOGO_PATH = os.path.join(REPO_ROOT, "favicon.png")
 
@@ -88,7 +87,7 @@ def make_wizard_side(scale):
     _center_text(draw, w, ty, "CONSOLE", sub_font, INK_SOFT, letter_spacing=2 * scale)
 
     tag_y = h - stripe_h - 26 * scale
-    _center_text(draw, w, tag_y, "RUNS 100% OFFLINE", tag_font, ACCENT, letter_spacing=1 * scale)
+    _center_text(draw, w, tag_y, "YOUR DATA STAYS LOCAL", tag_font, ACCENT, letter_spacing=1 * scale)
 
     return img
 

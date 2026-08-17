@@ -9,6 +9,11 @@
 </head>
 <body>
 
+  <!-- Titlebar + update banner + in-content nav stick together as one
+       unit (see .chrome-stack in style.css) so the banner can appear/
+       disappear without any of them needing to know each other's height. -->
+  <div class="chrome-stack">
+
   <!-- ============ CUSTOM WINDOW TITLEBAR ============ -->
   <!-- The window is frameless (see desktop_app.py) — this replaces the OS
        titlebar entirely. Only .ostitlebar__drag is a pywebview drag region;
@@ -36,74 +41,15 @@
     </div>
   </header>
 
-  <!-- Invisible edge/corner drag-resize handles (frameless windows have no
-       native resize border). See resize_window() in desktop_app.py. -->
-  <div class="ez ez--n" data-edge="n"></div>
-  <div class="ez ez--s" data-edge="s"></div>
-  <div class="ez ez--w" data-edge="w"></div>
-  <div class="ez ez--e" data-edge="e"></div>
-  <div class="ez ez--nw" data-edge="nw"></div>
-  <div class="ez ez--ne" data-edge="ne"></div>
-  <div class="ez ez--sw" data-edge="sw"></div>
-  <div class="ez ez--se" data-edge="se"></div>
-
-  <!-- ============ WELCOME / INIT DIALOG ============ -->
-  <div class="welcome-overlay" id="welcomeOverlay" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
-    <div class="welcome-modal" id="welcomeModal">
-      <div class="welcome-modal__ribbon" aria-hidden="true"></div>
-      <div class="welcome-modal__inner">
-        <button class="welcome-modal__close" id="welcomeClose" aria-label="Close">
-          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-
-        <div class="welcome-modal__mark">
-          <svg viewBox="0 0 32 32" aria-hidden="true">
-            <path class="welcome-chevron welcome-chevron--l" d="M14 6 L5 16 L14 26" />
-            <path class="welcome-chevron welcome-chevron--r" d="M18 6 L27 16 L18 26" />
-            <circle class="welcome-dot" cx="16" cy="16" r="2.4" />
-          </svg>
-        </div>
-
-        <span class="welcome-modal__eyebrow">Form 01 &middot; Welcome to</span>
-        <h1 class="welcome-modal__title" id="welcomeTitle">DELTA</h1>
-        <p class="welcome-modal__tagline">Data&#8209;Validation Console</p>
-        <p class="welcome-modal__desc">
-          Compare two data exports column-by-column — discrepancies, missing
-          records, and a styled report, all generated locally on this machine.
-        </p>
-
-        <ul class="welcome-modal__features">
-          <li>
-            <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-            <span><strong>Source &amp; Target</strong> — drag or browse two files, map columns in seconds</span>
-          </li>
-          <li>
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-            <span><strong>Runs entirely offline</strong> — no upload, no network, no telemetry</span>
-          </li>
-          <li>
-            <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
-            <span><strong>One-click report</strong> — styled workbook with discrepancies &amp; missing records</span>
-          </li>
-        </ul>
-
-        <button class="btn btn--primary welcome-modal__cta" id="welcomeStart">
-          <span class="btn__label">Begin Audit</span>
-          <svg class="btn__arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </button>
-
-        <label class="welcome-modal__skip">
-          <input type="checkbox" id="welcomeSkip" />
-          <span>Don&rsquo;t show this again</span>
-        </label>
-      </div>
+  <!-- ============ UPDATE BANNER ============ -->
+  <!-- Hidden by default; shown by __onUpdateAvailable when desktop_app.py's
+       startup check (Api.check_for_updates) finds a newer GitHub release. -->
+  <div class="update-banner" id="updateBanner" hidden>
+    <span class="update-banner__text" id="updateBannerText"></span>
+    <div class="update-banner__actions">
+      <button class="update-banner__btn update-banner__btn--primary" id="btnUpdateNow">Update &amp; Restart</button>
+      <button class="update-banner__btn" id="btnUpdateLater">Later</button>
     </div>
-  </div>
-
-  <!-- Ambient background texture -->
-  <div class="bg-layer" aria-hidden="true">
-    <div class="bg-grid"></div>
-    <div class="bg-noise"></div>
   </div>
 
   <!-- ============ HEADER / NAV ============ -->
@@ -140,6 +86,78 @@
       <span id="globalStatusText">Idle</span>
     </div>
   </header>
+
+  </div><!-- /.chrome-stack -->
+
+  <!-- Invisible edge/corner drag-resize handles (frameless windows have no
+       native resize border). See resize_window() in desktop_app.py. -->
+  <div class="ez ez--n" data-edge="n"></div>
+  <div class="ez ez--s" data-edge="s"></div>
+  <div class="ez ez--w" data-edge="w"></div>
+  <div class="ez ez--e" data-edge="e"></div>
+  <div class="ez ez--nw" data-edge="nw"></div>
+  <div class="ez ez--ne" data-edge="ne"></div>
+  <div class="ez ez--sw" data-edge="sw"></div>
+  <div class="ez ez--se" data-edge="se"></div>
+
+  <!-- Ambient background texture -->
+  <div class="bg-layer" aria-hidden="true">
+    <div class="bg-grid"></div>
+    <div class="bg-noise"></div>
+  </div>
+
+  <!-- ============ WELCOME / INIT DIALOG ============ -->
+  <div class="welcome-overlay" id="welcomeOverlay" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+    <div class="welcome-modal" id="welcomeModal">
+      <div class="welcome-modal__ribbon" aria-hidden="true"></div>
+      <div class="welcome-modal__inner">
+        <button class="welcome-modal__close" id="welcomeClose" aria-label="Close">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+
+        <div class="welcome-modal__mark">
+          <svg viewBox="0 0 32 32" aria-hidden="true">
+            <path class="welcome-chevron welcome-chevron--l" d="M14 6 L5 16 L14 26" />
+            <path class="welcome-chevron welcome-chevron--r" d="M18 6 L27 16 L18 26" />
+            <circle class="welcome-dot" cx="16" cy="16" r="2.4" />
+          </svg>
+        </div>
+
+        <span class="welcome-modal__eyebrow">Form 01 &middot; Welcome to</span>
+        <h1 class="welcome-modal__title" id="welcomeTitle">DELTA</h1>
+        <p class="welcome-modal__tagline">Data&#8209;Validation Console</p>
+        <p class="welcome-modal__desc">
+          Compare two data exports column-by-column — discrepancies, missing
+          records, and a styled report, all generated locally on this machine.
+        </p>
+
+        <ul class="welcome-modal__features">
+          <li>
+            <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            <span><strong>Source &amp; Target</strong> — drag or browse two files, map columns in seconds</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <span><strong>Your data never leaves this machine</strong> — comparisons run 100% locally; the only network call this app ever makes is a startup check for app updates</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+            <span><strong>One-click report</strong> — styled workbook with discrepancies &amp; missing records</span>
+          </li>
+        </ul>
+
+        <button class="btn btn--primary welcome-modal__cta" id="welcomeStart">
+          <span class="btn__label">Begin Audit</span>
+          <svg class="btn__arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+
+        <label class="welcome-modal__skip">
+          <input type="checkbox" id="welcomeSkip" />
+          <span>Don&rsquo;t show this again</span>
+        </label>
+      </div>
+    </div>
+  </div>
 
   <main class="stage">
 
@@ -339,7 +357,7 @@
     </section>
 
     <footer class="footer">
-      Runs locally via <span class="mono">validation_core.py</span> — no network calls, no telemetry.
+      Runs locally via <span class="mono">validation_core.py</span> — no telemetry, no data ever leaves this machine.
     </footer>
   </main>
 
