@@ -9,7 +9,7 @@
 
 #define MyAppName "DELTA Data Validation Console"
 #define MyAppVersion "1.0.1"
-#define MyAppPublisher "Mythics"
+#define MyAppPublisher "Mythics LLC"
 #define MyAppExeName "DeltaDataValidation.exe"
 
 [Setup]
