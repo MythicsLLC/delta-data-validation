@@ -1,0 +1,57 @@
+name: Build and release Windows installer
+
+# Triggered by pushing a tag like v1.0.1. The tag's version (after stripping
+# the leading "v") must match both VERSION and installer/installer.iss's
+# MyAppVersion — desktop_app.py's auto-updater compares its bundled VERSION
+# against the latest release tag (see UPDATE_API_URL in desktop_app.py), so
+# a mismatched tag would either publish a release the app never notices or
+# one that claims a version the exe doesn't actually contain.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pillow
+
+      - name: Check tag matches VERSION and installer.iss
+        shell: bash
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          file_version="$(cat VERSION | tr -d '[:space:]')"
+          iss_version="$(grep -oP '(?<=#define MyAppVersion ")[^"]+' installer/installer.iss)"
+          echo "tag=$tag_version VERSION=$file_version installer.iss=$iss_version"
+          if [ "$tag_version" != "$file_version" ] || [ "$tag_version" != "$iss_version" ]; then
+            echo "::error::Tag v$tag_version does not match VERSION ($file_version) and/or installer.iss MyAppVersion ($iss_version). Bump both files and re-tag."
+            exit 1
+          fi
+
+      - name: Build app (PyInstaller --onedir)
+        shell: cmd
+        run: build_exe.bat
+
+      - name: Build installer (Inno Setup)
+        shell: cmd
+        working-directory: installer
+        run: build_installer.bat
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/DeltaDataValidation_Setup.exe
+          generate_release_notes: true
