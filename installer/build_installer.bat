@@ -1,15 +1,14 @@
 @echo off
 REM Builds dist\DeltaDataValidation_Setup.exe — the distributable installer.
-REM Run from this directory (StandaloneApp\installer\). Requires the app exe
-REM to already be built (run ..\build_exe.bat first) and Inno Setup 6
-REM installed (ISCC.exe on PATH, or one of the common install locations
-REM below).
+REM Run from this directory (installer\). Requires the app's --onedir build
+REM to already exist (run ..\build_exe.bat first) and Inno Setup 6 installed
+REM (ISCC.exe on PATH, or one of the common install locations below).
 
 setlocal
 cd /d "%~dp0"
 
-if not exist "..\dist\DeltaDataValidation.exe" (
-    echo ERROR: ..\dist\DeltaDataValidation.exe not found — run ..\build_exe.bat first.
+if not exist "..\dist\DeltaDataValidation\DeltaDataValidation.exe" (
+    echo ERROR: ..\dist\DeltaDataValidation\DeltaDataValidation.exe not found — run ..\build_exe.bat first.
     exit /b 1
 )
 

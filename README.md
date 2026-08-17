@@ -48,10 +48,13 @@ python desktop_app.py
 build_exe.bat
 ```
 
-Output: `dist\DeltaDataValidation.exe` (~133 MB, single file). Requires the
-Microsoft Edge WebView2 Runtime on the machine it runs on (already present
-on Windows 11 and most updated Windows 10 installs — Windows itself uses it
-for Search/Widgets, so in practice it's essentially always there).
+Output: `dist\DeltaDataValidation\DeltaDataValidation.exe` plus its
+`_internal\` support folder (`--onedir` — see "Fixed: first-launch delay"
+below for why it's a folder, not a single file). Requires the Microsoft
+Edge WebView2 Runtime on the machine it runs on (already present on
+Windows 11 and most updated Windows 10 installs — Windows itself uses it
+for Search/Widgets, so in practice it's essentially always there; the
+installer below handles it automatically either way).
 
 ## Building the installer
 
@@ -215,7 +218,7 @@ process starting and the custom titlebar/theme appearing.
 **Closing:** `window.events.closing` sets the validation cancel flag
 (best-effort — stops the background thread from writing to an output file
 after the user has asked to close), and `window.events.closed` forces an
-immediate `os._exit(0)`. PyInstaller `--onefile` + WebView2/pythonnet can
+immediate `os._exit(0)`. PyInstaller-frozen WebView2/pythonnet apps can
 otherwise leave COM/background threads alive after the window itself has
 disappeared; forcing the exit here means the process in Task Manager
 disappears in sync with the window, every time you close normally (custom
@@ -223,35 +226,36 @@ title-bar × button, Alt+F4, or the taskbar close action all route through
 the same WinForms `FormClosing`/`FormClosed` events pywebview listens on).
 
 This does **not** cover force-killing the process itself (Task Manager "End
-task", killing it from a script) — that bypasses Python entirely, so the
-orphan-child-process caveat below still applies to that specific case.
+task", killing it from a script) — that bypasses Python entirely, so a
+force-killed launch can still leave an orphaned `msedgewebview2.exe` child
+behind (killing a parent doesn't kill its children). Close the app normally
+instead of force-killing it if you're testing repeatedly.
 
-## Known issue: variable first-launch delay
+## Fixed: first-launch delay (was PyInstaller `--onefile`)
 
-PyInstaller `--onefile` apps self-extract their entire bundle to a temp
-folder on **every** launch before Python starts, and that happens before
-the app can show any progress of its own. On a Defender-managed endpoint, a
-freshly-built, unsigned exe's window took anywhere from ~10 seconds to over
-a minute to appear across repeated test launches; the variance tracked
-antivirus/cloud-reputation scanning of the newly-extracted files, not
-anything in the app itself — `--selftest` (no window, same extraction) was
-consistently fast. If you're testing this repeatedly yourself: **force-
-killing the exe mid-launch leaves its `msedgewebview2.exe` child processes
-running** (killing a parent process doesn't kill its children), and enough
-accumulated orphans will slow down or stall the *next* launch too — check
-Task Manager for stray `msedgewebview2.exe` instances and close the app
-normally instead of force-killing it.
+Earlier builds used PyInstaller `--onefile`, which self-extracts the entire
+bundle to a fresh `%TEMP%` folder on **every single launch** before Python
+even starts. On a Defender-managed endpoint that meant antivirus real-time
+scanning a freshly-written extraction on every launch — anywhere from
+~10 seconds to over a minute before the window appeared, varying by AV
+engine state, not anything in the app itself.
 
-This is a deployment characteristic of unsigned single-file Python exes in
-general, not specific to this code:
+`build_exe.bat` now uses `--onedir` instead: PyInstaller writes the exe and
+its support files once, and `installer.iss` installs that whole folder into
+Program Files. There's no per-launch extraction step at all anymore, so
+there's nothing for AV to re-scan on the 2nd, 3rd, ... launch — only
+whatever one-time scan Defender does of a freshly-installed program, same
+as any other Windows software. The `--onefile` "single .exe" convenience
+wasn't actually buying anything once distribution moved to a proper
+installer (`installer/`) instead of handing someone a bare .exe to run
+directly, so there was no real tradeoff in dropping it.
 
-- **Just wait** — it's a one-time cost per unique build; once the AV engine
-  has a cached verdict for that exact file hash, subsequent launches of the
-  *same* exe are fast.
-- **Code-sign the exe** if you have a code-signing certificate — the
-  standard fix, avoids most antivirus scrutiny of new executables.
-- **Add a Defender exclusion** for the folder you run it from (dev/test only
-  — not a substitute for signing if you're distributing it to others).
+**Still true regardless of onefile/onedir**, for anyone running an unsigned
+build outside the installer (e.g. iterating from `dist\` during
+development): code-signing the exe is the standard way to avoid antivirus
+scrutiny of a newly-built binary if you ever need to hand one around
+directly; a Defender exclusion on your build/`dist` folder is a dev-only
+substitute, not something to ask end users to do.
 
 A defensive fix is included for a separate, unrelated `--noconsole` gotcha:
 PyInstaller windowed builds have `sys.stdout`/`stderr`/`stdin` set to `None`

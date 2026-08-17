@@ -1,6 +1,8 @@
 @echo off
-REM Builds a single-file Windows .exe for the DELTA Data Validation Console.
-REM Run from the repo root. Output: dist\DeltaDataValidation.exe
+REM Builds the DELTA Data Validation Console as a PyInstaller --onedir build.
+REM Run from the repo root. Output: dist\DeltaDataValidation\DeltaDataValidation.exe
+REM (plus its supporting _internal\ folder — see installer\installer.iss,
+REM which packages the whole folder, not just the exe).
 REM
 REM Requires the Microsoft Edge WebView2 Runtime (preinstalled on Windows 11
 REM and most updated Windows 10 machines). The UI is plain HTML/CSS/JS in
@@ -8,12 +10,21 @@ REM webapp\, rendered via pywebview's edgechromium backend — no Chromium is
 REM bundled, so the exe stays a fraction of the size an Electron-style app
 REM would be.
 REM
+REM NOTE on --onedir (not --onefile): a --onefile exe re-extracts its entire
+REM bundle to a fresh %TEMP% folder on *every single launch*, and antivirus
+REM real-time scanning of that freshly-written extraction was the dominant
+REM cost of the "10s-60s before the window appears" first-launch delay this
+REM app used to have (see git history / README). --onedir writes the files
+REM once, at install time, and every launch after that just runs them
+REM directly — no per-launch extraction, so no per-launch AV re-scan. This
+REM only works well because distribution goes through installer\installer.iss
+REM now instead of handing someone a bare .exe; a loose folder next to a
+REM .exe would be a worse "download this" experience than one file.
+REM
 REM NOTE on excludes: --collect-all polars pulls in polars' optional cloud-
 REM storage extras (S3/boto3, SQL/sqlalchemy, SSH/paramiko, etc.) which this
 REM app never uses since it only reads local files. Excluding them keeps the
-REM bundle smaller, which matters because PyInstaller onefile re-extracts the
-REM whole archive to a temp dir on every launch, and antivirus real-time
-REM scanning of that extraction is the dominant cost of first-launch delay.
+REM install smaller for no functional loss.
 
 setlocal
 cd /d "%~dp0"
@@ -24,9 +35,9 @@ if exist dist rmdir /s /q dist
 if exist DeltaDataValidation.spec del /q DeltaDataValidation.spec
 if exist DeltaPostValidation.spec del /q DeltaPostValidation.spec
 
-echo Building single-file exe with PyInstaller...
+echo Building DeltaDataValidation (--onedir) with PyInstaller...
 python -m PyInstaller ^
-    --onefile ^
+    --onedir ^
     --noconsole ^
     --name DeltaDataValidation ^
     --icon "webapp\assets\icon.ico" ^
@@ -64,9 +75,6 @@ if errorlevel 1 (
 )
 
 echo.
-echo Build succeeded: dist\DeltaDataValidation.exe
-echo NOTE: first launch self-extracts the bundle to a temp folder and may take
-echo a few seconds to a minute (longer if antivirus real-time scanning is slow)
-echo before the window appears. This is normal for single-file PyInstaller apps
-echo and is a one-time cost per unique build (see README.md).
+echo Build succeeded: dist\DeltaDataValidation\DeltaDataValidation.exe
+echo Run installer\build_installer.bat next to produce a distributable Setup.exe.
 endlocal

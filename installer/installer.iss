@@ -50,8 +50,18 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional shortcuts:"
 
+[InstallDelete]
+; --onedir's _internal\ dependency folder can gain/lose/rename files between
+; versions (e.g. a package we stop bundling) — wipe it before laying down
+; the new one on upgrade so no stale file from a previous version lingers
+; alongside the new build's.
+Type: filesandordirs; Name: "{app}\_internal"
+
 [Files]
-Source: "..\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+; --onedir (see build_exe.bat) — the exe plus its whole _internal\ support
+; folder, not a single file. ignoreversion because these are our own build
+; outputs with no meaningful per-file version stamps to compare.
+Source: "..\dist\DeltaDataValidation\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; The WebView2 bootstrapper (if needed) is downloaded straight to {tmp} by
 ; the [Code] section below and run from there by [Run] — it never needs to
 ; be listed here.
