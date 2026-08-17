@@ -1,11 +1,20 @@
 name: Bump version and release
 
-# Manual trigger: run this instead of hand-editing VERSION and
-# installer/installer.iss. It bumps both files together (they must stay in
-# sync — see the comment at the top of installer.iss), commits the bump to
-# main, tags it, and kicks off release.yml to build and publish the
-# installer for the new tag.
+# Runs on every push to main (auto patch bump) AND on manual dispatch (choose
+# patch/minor/major). Bumps VERSION and installer/installer.iss together
+# (they must stay in sync — see the comment at the top of installer.iss),
+# commits the bump to main, tags it, and kicks off release.yml to build and
+# publish the installer for the new tag.
+#
+# Loop-safety: the "Commit and tag" step below pushes using the default
+# GITHUB_TOKEN, and GitHub does not fire `on: push` events for pushes made
+# with that token — so this workflow's own version-bump commit does NOT
+# retrigger itself. Only pushes made with real user credentials (e.g. an
+# interactive `git push`) start a new run.
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       bump:
@@ -38,7 +47,7 @@ jobs:
         run: |
           current="$(tr -d '[:space:]' < VERSION)"
           IFS='.' read -r major minor patch <<< "$current"
-          case "${{ inputs.bump }}" in
+          case "${{ inputs.bump || 'patch' }}" in
             major) major=$((major + 1)); minor=0; patch=0 ;;
             minor) minor=$((minor + 1)); patch=0 ;;
             patch) patch=$((patch + 1)) ;;
