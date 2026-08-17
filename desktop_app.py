@@ -116,6 +116,7 @@ class Api:
         self._cancel_event: threading.Event | None = None
         self._run_lock = threading.Lock()
         self._maximized = False
+        self._pending_installer_path: str | None = None
 
     def set_window(self, window: webview.Window):
         self._window = window
@@ -160,7 +161,9 @@ class Api:
     # (see main()) in the background; any failure (offline, DNS, rate
     # limit, whatever) is swallowed silently — checking for updates must
     # never nag or block someone using this as the offline tool it's
-    # designed to be.
+    # designed to be. As soon as a newer release is found, the installer
+    # downloads itself automatically (no click needed) — the UI only ever
+    # asks the user to click once, to choose when to restart.
 
     def check_for_updates(self):
         threading.Thread(target=self._check_for_updates_worker, daemon=True).start()
@@ -194,16 +197,12 @@ class Api:
         self._push(
             "__onUpdateAvailable",
             latest_tag.lstrip("vV"),
-            asset["browser_download_url"],
             asset.get("size", 0),
             data.get("html_url", ""),
         )
+        self._download_update_worker(asset["browser_download_url"])
 
-    def download_and_install_update(self, url: str):
-        threading.Thread(target=self._download_and_install_worker, args=(url,), daemon=True).start()
-        return {"ok": True}
-
-    def _download_and_install_worker(self, url: str):
+    def _download_update_worker(self, url: str):
         try:
             installer_path = os.path.join(tempfile.gettempdir(), "DeltaDataValidation_Update_Setup.exe")
             req = urllib.request.Request(url, headers={"User-Agent": "DeltaDataValidation-App"})
@@ -226,7 +225,17 @@ class Api:
             self._push("__onUpdateError", str(e))
             return
 
-        self._push("__onUpdateReadyToInstall")
+        # Downloaded and ready — but installing means replacing this running
+        # process, so we stop here and wait for the user to actually choose
+        # to restart (see restart_and_install_update) rather than doing it
+        # the instant the bytes land.
+        self._pending_installer_path = installer_path
+        self._push("__onUpdateReadyToRestart")
+
+    def restart_and_install_update(self):
+        if not self._pending_installer_path:
+            return {"ok": False}
+        installer_path = self._pending_installer_path
 
         # This process is about to be replaced. installer.iss's
         # CloseApplications=yes would eventually force-close us anyway, but
@@ -248,6 +257,7 @@ class Api:
 
         if self._window is not None:
             self._window.destroy()
+        return {"ok": True}
 
     # ---- file pickers ------------------------------------------------
 

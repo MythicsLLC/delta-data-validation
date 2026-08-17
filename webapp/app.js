@@ -649,26 +649,29 @@
 
   /* ---------------------------------------------------------------- */
   /* Auto-update banner — GitHub-Desktop-style "update available" bar.  */
-  /* desktop_app.py's Api.check_for_updates() runs once per launch and  */
-  /* calls window.__onUpdateAvailable(...) here if a newer release      */
-  /* exists; everything below is just reacting to those pushes.         */
+  /* desktop_app.py's Api.check_for_updates() runs once per launch; if a  */
+  /* newer release exists it starts downloading it immediately in the   */
+  /* background (no click needed) and pushes progress here. The banner  */
+  /* only asks for a click once the download is actually done, to pick  */
+  /* when to restart — everything below is just reacting to those       */
+  /* pushes, never initiating the download itself.                      */
   /* ---------------------------------------------------------------- */
   function initUpdateBanner() {
     const banner = $('updateBanner');
     const text = $('updateBannerText');
     const btnNow = $('btnUpdateNow');
     const btnLater = $('btnUpdateLater');
-    let downloadUrl = null;
+    let updateReady = false;
 
     btnLater.addEventListener('click', () => { banner.hidden = true; });
 
     btnNow.addEventListener('click', async () => {
-      if (!downloadUrl) return;
+      if (!updateReady) return;
       btnNow.disabled = true;
       btnLater.disabled = true;
-      text.textContent = 'Downloading update… 0%';
+      text.textContent = 'Installing — the app will restart automatically…';
       try {
-        await callApi('download_and_install_update', downloadUrl);
+        await callApi('restart_and_install_update');
       } catch (err) {
         text.textContent = `Update failed: ${err.message || err}`;
         btnNow.disabled = false;
@@ -676,10 +679,11 @@
       }
     });
 
-    window.__onUpdateAvailable = (version, url, _sizeBytes, releaseUrl) => {
-      downloadUrl = url;
-      text.textContent = `DELTA v${version} is available.`;
+    window.__onUpdateAvailable = (version, _sizeBytes, releaseUrl) => {
       void releaseUrl; // not linked out to yet; reserved for a future "What's new" click-through
+      updateReady = false;
+      btnNow.hidden = true; // nothing to click until the background download finishes
+      text.textContent = `Downloading DELTA v${version}… 0%`;
       banner.hidden = false;
     };
 
@@ -687,13 +691,17 @@
       text.textContent = `Downloading update… ${pct}%`;
     };
 
-    window.__onUpdateReadyToInstall = () => {
-      text.textContent = 'Installing — the app will restart automatically…';
+    window.__onUpdateReadyToRestart = () => {
+      updateReady = true;
+      text.textContent = 'Update downloaded — restart to finish installing.';
+      btnNow.hidden = false;
+      btnNow.disabled = false;
     };
 
     window.__onUpdateError = (message) => {
       text.textContent = `Update failed: ${message}`;
-      btnNow.disabled = false;
+      banner.hidden = false;
+      btnNow.hidden = true;
       btnLater.disabled = false;
     };
   }

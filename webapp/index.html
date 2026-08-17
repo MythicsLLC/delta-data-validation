@@ -43,11 +43,14 @@
 
   <!-- ============ UPDATE BANNER ============ -->
   <!-- Hidden by default; shown by __onUpdateAvailable when desktop_app.py's
-       startup check (Api.check_for_updates) finds a newer GitHub release. -->
+       startup check (Api.check_for_updates) finds a newer GitHub release.
+       The update downloads automatically in the background from that point
+       on — btnUpdateNow stays hidden (see app.js) until __onUpdateReadyToRestart
+       fires, since there's nothing to click until the download is done. -->
   <div class="update-banner" id="updateBanner" hidden>
     <span class="update-banner__text" id="updateBannerText"></span>
     <div class="update-banner__actions">
-      <button class="update-banner__btn update-banner__btn--primary" id="btnUpdateNow">Update &amp; Restart</button>
+      <button class="update-banner__btn update-banner__btn--primary" id="btnUpdateNow" hidden>Restart Now</button>
       <button class="update-banner__btn" id="btnUpdateLater">Later</button>
     </div>
   </div>
