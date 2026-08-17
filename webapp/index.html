@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DELTA — Data Validation Console</title>
+<link rel="icon" href="assets/icon.ico" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ============ CUSTOM WINDOW TITLEBAR ============ -->
+  <!-- The window is frameless (see desktop_app.py) — this replaces the OS
+       titlebar entirely. Only .ostitlebar__drag is a pywebview drag region;
+       the controls sit outside it so button clicks don't also start a
+       window drag. -->
+  <header class="ostitlebar" id="osTitlebar">
+    <div class="ostitlebar__drag pywebview-drag-region" id="osTitlebarDrag">
+      <svg class="ostitlebar__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <path class="ostitlebar__chevron ostitlebar__chevron--l" d="M14 6 L5 16 L14 26" />
+        <path class="ostitlebar__chevron ostitlebar__chevron--r" d="M18 6 L27 16 L18 26" />
+        <circle class="ostitlebar__dot" cx="16" cy="16" r="2.2" />
+      </svg>
+      <span class="ostitlebar__title">DELTA <span class="ostitlebar__title-sep">&middot;</span> <span class="ostitlebar__title-sub">Data Validation Console</span></span>
+    </div>
+    <div class="ostitlebar__controls">
+      <button class="ostitlebar__btn" id="btnWinMinimize" aria-label="Minimize">
+        <svg viewBox="0 0 10 10"><path d="M1 5h8"/></svg>
+      </button>
+      <button class="ostitlebar__btn" id="btnWinMaximize" aria-label="Maximize">
+        <svg viewBox="0 0 10 10" id="iconMaximize"><rect x="1.5" y="1.5" width="7" height="7"/></svg>
+      </button>
+      <button class="ostitlebar__btn ostitlebar__btn--close" id="btnWinClose" aria-label="Close">
+        <svg viewBox="0 0 10 10"><path d="M1 1l8 8M9 1l-8 8"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Invisible edge/corner drag-resize handles (frameless windows have no
+       native resize border). See resize_window() in desktop_app.py. -->
+  <div class="ez ez--n" data-edge="n"></div>
+  <div class="ez ez--s" data-edge="s"></div>
+  <div class="ez ez--w" data-edge="w"></div>
+  <div class="ez ez--e" data-edge="e"></div>
+  <div class="ez ez--nw" data-edge="nw"></div>
+  <div class="ez ez--ne" data-edge="ne"></div>
+  <div class="ez ez--sw" data-edge="sw"></div>
+  <div class="ez ez--se" data-edge="se"></div>
+
+  <!-- ============ WELCOME / INIT DIALOG ============ -->
+  <div class="welcome-overlay" id="welcomeOverlay" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+    <div class="welcome-modal" id="welcomeModal">
+      <div class="welcome-modal__ribbon" aria-hidden="true"></div>
+      <div class="welcome-modal__inner">
+        <button class="welcome-modal__close" id="welcomeClose" aria-label="Close">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+
+        <div class="welcome-modal__mark">
+          <svg viewBox="0 0 32 32" aria-hidden="true">
+            <path class="welcome-chevron welcome-chevron--l" d="M14 6 L5 16 L14 26" />
+            <path class="welcome-chevron welcome-chevron--r" d="M18 6 L27 16 L18 26" />
+            <circle class="welcome-dot" cx="16" cy="16" r="2.4" />
+          </svg>
+        </div>
+
+        <span class="welcome-modal__eyebrow">Form 01 &middot; Welcome to</span>
+        <h1 class="welcome-modal__title" id="welcomeTitle">DELTA</h1>
+        <p class="welcome-modal__tagline">Data&#8209;Validation Console</p>
+        <p class="welcome-modal__desc">
+          Compare two data exports column-by-column — discrepancies, missing
+          records, and a styled report, all generated locally on this machine.
+        </p>
+
+        <ul class="welcome-modal__features">
+          <li>
+            <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            <span><strong>Source &amp; Target</strong> — drag or browse two files, map columns in seconds</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <span><strong>Runs entirely offline</strong> — no upload, no network, no telemetry</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+            <span><strong>One-click report</strong> — styled workbook with discrepancies &amp; missing records</span>
+          </li>
+        </ul>
+
+        <button class="btn btn--primary welcome-modal__cta" id="welcomeStart">
+          <span class="btn__label">Begin Audit</span>
+          <svg class="btn__arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+
+        <label class="welcome-modal__skip">
+          <input type="checkbox" id="welcomeSkip" />
+          <span>Don&rsquo;t show this again</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ambient background texture -->
+  <div class="bg-layer" aria-hidden="true">
+    <div class="bg-grid"></div>
+    <div class="bg-noise"></div>
+  </div>
+
+  <!-- ============ HEADER / NAV ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <path class="brand__chevron brand__chevron--l" d="M14 6 L5 16 L14 26" />
+        <path class="brand__chevron brand__chevron--r" d="M18 6 L27 16 L18 26" />
+        <circle class="brand__dot" cx="16" cy="16" r="2.2" />
+      </svg>
+      <div class="brand__text">
+        <span class="brand__name">DELTA</span>
+        <span class="brand__sub">Data&#8209;Validation Console</span>
+      </div>
+    </div>
+
+    <nav class="steps" id="stepNav" aria-label="Workflow steps">
+      <a href="#panel-files" data-step="files" class="steps__item is-active">
+        <span class="steps__num">01</span><span>Files</span>
+      </a>
+      <a href="#panel-mapping" data-step="mapping" class="steps__item">
+        <span class="steps__num">02</span><span>Mapping</span>
+      </a>
+      <a href="#panel-options" data-step="options" class="steps__item">
+        <span class="steps__num">03</span><span>Options</span>
+      </a>
+      <a href="#panel-run" data-step="run" class="steps__item">
+        <span class="steps__num">04</span><span>Run</span>
+      </a>
+    </nav>
+
+    <div class="topbar__status" id="globalStatus">
+      <span class="status-dot" id="globalStatusDot"></span>
+      <span id="globalStatusText">Idle</span>
+    </div>
+  </header>
+
+  <main class="stage">
+
+    <!-- ============ PANEL 1 — FILES ============ -->
+    <section class="panel" id="panel-files" data-reveal>
+      <span class="panel__tag">Form 01-A</span>
+      <div class="panel__head">
+        <span class="panel__eyebrow">Step 01</span>
+        <h2 class="panel__title">Load your data streams</h2>
+        <p class="panel__hint">Drop a file or browse. Excel workbooks with multiple sheets will let you pick one.</p>
+      </div>
+
+      <div class="streams">
+        <div class="dropzone" data-side="source" id="dz-source" tabindex="0" role="button" aria-label="Choose Source file">
+          <div class="dropzone__glow"></div>
+          <span class="dropzone__tag dropzone__tag--source">SOURCE</span>
+          <svg class="dropzone__icon" viewBox="0 0 48 48" aria-hidden="true">
+            <path d="M24 6v24M24 30l-9-9M24 30l9-9" />
+            <path d="M8 34v4a4 4 0 0 0 4 4h24a4 4 0 0 0 4-4v-4" />
+          </svg>
+          <p class="dropzone__title">Drop Source file</p>
+          <p class="dropzone__sub">or click to browse · .xlsx .xls .csv</p>
+          <div class="dropzone__file" id="file-source" hidden>
+            <span class="dropzone__filename" id="file-source-name"></span>
+            <select class="select select--sheet" id="sheet-source" hidden></select>
+          </div>
+        </div>
+
+        <div class="streams__bridge" aria-hidden="true">
+          <span class="bridge-glyph">&Delta;</span>
+        </div>
+
+        <div class="dropzone" data-side="target" id="dz-target" tabindex="0" role="button" aria-label="Choose Target file">
+          <div class="dropzone__glow"></div>
+          <span class="dropzone__tag dropzone__tag--target">TARGET</span>
+          <svg class="dropzone__icon" viewBox="0 0 48 48" aria-hidden="true">
+            <path d="M24 6v24M24 30l-9-9M24 30l9-9" />
+            <path d="M8 34v4a4 4 0 0 0 4 4h24a4 4 0 0 0 4-4v-4" />
+          </svg>
+          <p class="dropzone__title">Drop Target file</p>
+          <p class="dropzone__sub">or click to browse · .xlsx .xls .csv</p>
+          <div class="dropzone__file" id="file-target" hidden>
+            <span class="dropzone__filename" id="file-target-name"></span>
+            <select class="select select--sheet" id="sheet-target" hidden></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel__actions">
+        <button class="btn btn--primary" id="btnLoadColumns" disabled>
+          <span class="btn__label">Load Columns</span>
+          <svg class="btn__arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <span class="inline-msg" id="loadColumnsMsg"></span>
+      </div>
+    </section>
+
+    <!-- ============ PANEL 2 — MAPPING ============ -->
+    <section class="panel" id="panel-mapping" data-reveal>
+      <span class="panel__tag">Form 01-B</span>
+      <div class="panel__head">
+        <span class="panel__eyebrow">Step 02</span>
+        <h2 class="panel__title">Map columns</h2>
+        <p class="panel__hint">Choose the Target column for each Source column you want compared, then flag Key / Date / Include.</p>
+      </div>
+
+      <div class="mapping-toolbar">
+        <div class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input type="text" id="mappingFilter" placeholder="Filter source columns…" disabled />
+        </div>
+        <div class="mapping-toolbar__stats" id="mappingStats">No columns loaded</div>
+      </div>
+
+      <div class="mapping-table" id="mappingTable">
+        <div class="mapping-row mapping-row--head">
+          <span>Source Column</span>
+          <span>Target Column</span>
+          <span class="center">Key</span>
+          <span class="center">Date</span>
+          <span class="center">Include</span>
+        </div>
+        <div class="mapping-empty" id="mappingEmpty">Load both files, then click <strong>Load Columns</strong> above.</div>
+      </div>
+    </section>
+
+    <!-- ============ PANEL 3 — OPTIONS ============ -->
+    <section class="panel" id="panel-options" data-reveal>
+      <span class="panel__tag">Form 01-C</span>
+      <div class="panel__head">
+        <span class="panel__eyebrow">Step 03</span>
+        <h2 class="panel__title">Comparison options</h2>
+        <p class="panel__hint">Labels appear in the report headers. Output folder is where the result workbook is written.</p>
+      </div>
+
+      <div class="options-grid">
+        <label class="field">
+          <span class="field__label">Source label</span>
+          <input type="text" class="input" id="optSourceLabel" value="Source" />
+        </label>
+        <label class="field">
+          <span class="field__label">Target label</span>
+          <input type="text" class="input" id="optTargetLabel" value="Target" />
+        </label>
+
+        <div class="field field--switch">
+          <span class="field__label">Case sensitive matching</span>
+          <button class="switch is-on" id="optCaseSensitive" role="switch" aria-checked="true">
+            <span class="switch__thumb"></span>
+          </button>
+        </div>
+
+        <div class="field field--switch">
+          <span class="field__label">Include full Source/Target data sheet</span>
+          <button class="switch" id="optFullData" role="switch" aria-checked="false">
+            <span class="switch__thumb"></span>
+          </button>
+        </div>
+
+        <label class="field field--wide">
+          <span class="field__label">Output folder</span>
+          <div class="path-row">
+            <input type="text" class="input input--mono" id="optOutputDir" placeholder="Choose where the report is saved…" readonly />
+            <button class="btn btn--ghost" id="btnPickOutputDir">Browse&hellip;</button>
+          </div>
+        </label>
+      </div>
+    </section>
+
+    <!-- ============ PANEL 4 — RUN & RESULTS ============ -->
+    <section class="panel panel--run" id="panel-run" data-reveal>
+      <span class="panel__tag">Form 01-D</span>
+      <div class="panel__head">
+        <span class="panel__eyebrow">Step 04</span>
+        <h2 class="panel__title">Run validation</h2>
+        <p class="panel__hint">This runs entirely on this machine — no data leaves your device.</p>
+      </div>
+
+      <div class="run-controls">
+        <button class="btn btn--run" id="btnRun">
+          <svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7V5z"/></svg>
+          <span>Run Validation</span>
+        </button>
+        <button class="btn btn--ghost btn--danger" id="btnCancel" hidden>Cancel</button>
+      </div>
+
+      <div class="progress-block" id="progressBlock" hidden>
+        <div class="ticket-strip" id="ticketStrip"></div>
+        <div class="progress-meta">
+          <span class="progress-pct" id="progressPct">0%</span>
+          <span class="progress-stage" id="progressStage">Starting…</span>
+        </div>
+      </div>
+
+      <div class="terminal" id="terminal" aria-live="polite">
+        <div class="terminal__bar">
+          <span class="terminal__dot"></span>
+          <span class="terminal__dot"></span>
+          <span class="terminal__dot"></span>
+          <span class="terminal__title">validation.log</span>
+        </div>
+        <div class="terminal__body" id="terminalBody"></div>
+      </div>
+
+      <!-- Result banner: success -->
+      <div class="result-card result-card--success is-hit" id="resultSuccess" hidden>
+        <div class="stamp"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>
+        <div class="result-card__body">
+          <h3>Validation complete</h3>
+          <p id="resultElapsed"></p>
+          <div class="stat-grid" id="statGrid"></div>
+          <div class="result-card__actions">
+            <button class="btn btn--primary" id="btnOpenReport">Open Report</button>
+            <button class="btn btn--ghost" id="btnOpenFolder">Open Output Folder</button>
+          </div>
+          <p class="result-card__extra" id="resultExtraFiles"></p>
+        </div>
+      </div>
+
+      <!-- Result banner: error -->
+      <div class="result-card result-card--error is-hit" id="resultError" hidden>
+        <div class="stamp stamp--error"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+        <div class="result-card__body">
+          <h3>Validation failed</h3>
+          <p id="resultErrorMsg"></p>
+          <button class="btn btn--ghost" id="btnDismissError">Dismiss</button>
+        </div>
+      </div>
+
+      <!-- Result banner: cancelled -->
+      <div class="result-card result-card--neutral" id="resultCancelled" hidden>
+        <div class="result-card__body">
+          <h3>Cancelled</h3>
+          <p>Validation was stopped before it finished.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      Runs locally via <span class="mono">validation_core.py</span> — no network calls, no telemetry.
+    </footer>
+  </main>
+
+  <!-- Toast container -->
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Dependencies to build/run the standalone Data Validation app.
+# Tested with: polars 1.38.x, pywebview 6.2.x, pythonnet 3.1.x, pyinstaller 6.20.x,
+# Python 3.11 (Windows). Requires the Microsoft Edge WebView2 Runtime (preinstalled
+# on Windows 11 / most updated Windows 10).
+pandas
+polars
+python-calamine
+fastexcel
+xlsxwriter
+openpyxl
+pywebview
+pythonnet
+pyinstaller
