@@ -280,13 +280,28 @@ class Api:
         # exe only after we're actually gone.
         install_dir = os.path.dirname(sys.executable if getattr(sys, "frozen", False) else __file__)
         new_exe = os.path.join(install_dir, os.path.basename(sys.executable) if getattr(sys, "frozen", False) else "DeltaDataValidation.exe")
-        helper = (
-            f'timeout /t 2 /nobreak >nul & '
-            f'start "" /wait "{installer_path}" /SILENT /NORESTART /SUPPRESSMSGBOXES & '
-            f'start "" "{new_exe}"'
+
+        # Written to a .bat file and invoked by path rather than passed as an
+        # inline `cmd /c "<quoted commands>"` string. subprocess.Popen on
+        # Windows re-escapes list arguments via list2cmdline() (C-runtime
+        # quoting rules) before cmd.exe ever sees them, and cmd.exe's own
+        # `/c` parsing uses different, incompatible quoting rules — those two
+        # layers collide on a string this quote-heavy (nested "..." around
+        # both paths, chained with &) and corrupt the paths `start` receives.
+        # A .bat file sidesteps this entirely: it's one plain path with no
+        # embedded quotes for Python to mangle, and cmd.exe parses the
+        # script's own quoting natively once it's actually reading the file.
+        helper_path = os.path.join(
+            tempfile.gettempdir(), f"DeltaDataValidation_UpdateHelper_{secrets.token_hex(8)}.bat"
         )
+        with open(helper_path, "w", encoding="utf-8") as f:
+            f.write("@echo off\r\n")
+            f.write("timeout /t 2 /nobreak >nul\r\n")
+            f.write(f'start "" /wait "{installer_path}" /SILENT /NORESTART /SUPPRESSMSGBOXES\r\n')
+            f.write(f'start "" "{new_exe}"\r\n')
+
         subprocess.Popen(
-            ["cmd", "/c", helper],
+            ["cmd", "/c", helper_path],
             creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
         )
 
