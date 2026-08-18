@@ -15,7 +15,9 @@ comparison engine itself (validation_core.py) never touches the network.
 Packaged into a single .exe with PyInstaller (see build_exe.bat).
 """
 
+import hashlib
 import os
+import secrets
 import sys
 import json
 import subprocess
@@ -117,6 +119,7 @@ class Api:
         self._run_lock = threading.Lock()
         self._maximized = False
         self._pending_installer_path: str | None = None
+        self._pending_installer_sha256: str | None = None
 
     def set_window(self, window: webview.Window):
         self._window = window
@@ -203,8 +206,19 @@ class Api:
         self._download_update_worker(asset["browser_download_url"])
 
     def _download_update_worker(self, url: str):
+        # Random filename (not a fixed, predictable one) so another local
+        # process can't pre-stage a file at a path it knows we're about to
+        # write to. This is one layer of a two-layer defense against a
+        # TOCTOU swap — see the hash re-check in restart_and_install_update,
+        # which is the layer that actually matters: the real risk isn't the
+        # download moment, it's the arbitrary delay between "downloaded" and
+        # "user clicks Restart Now", during which something else on the
+        # machine could overwrite this file before we execute it.
+        installer_path = os.path.join(
+            tempfile.gettempdir(), f"DeltaDataValidation_Update_{secrets.token_hex(8)}.exe"
+        )
+        hasher = hashlib.sha256()
         try:
-            installer_path = os.path.join(tempfile.gettempdir(), "DeltaDataValidation_Update_Setup.exe")
             req = urllib.request.Request(url, headers={"User-Agent": "DeltaDataValidation-App"})
             with urllib.request.urlopen(req, timeout=30) as resp:
                 total = int(resp.headers.get("Content-Length", 0) or 0)
@@ -216,6 +230,7 @@ class Api:
                         if not chunk:
                             break
                         f.write(chunk)
+                        hasher.update(chunk)
                         written += len(chunk)
                         pct = int(written * 100 / total) if total else 0
                         if pct != last_pct:
@@ -230,12 +245,32 @@ class Api:
         # to restart (see restart_and_install_update) rather than doing it
         # the instant the bytes land.
         self._pending_installer_path = installer_path
+        self._pending_installer_sha256 = hasher.hexdigest()
         self._push("__onUpdateReadyToRestart")
 
     def restart_and_install_update(self):
-        if not self._pending_installer_path:
+        if not self._pending_installer_path or not self._pending_installer_sha256:
             return {"ok": False}
         installer_path = self._pending_installer_path
+
+        # Re-hash the file right before running it and compare against the
+        # hash taken while we downloaded it. This is the actual TOCTOU fix:
+        # the check happens immediately adjacent to the use (execution),
+        # not back at download time — closing the arbitrary user-decision
+        # window during which another local process could have swapped the
+        # file at this path with something else before we run it elevated.
+        try:
+            verify_hasher = hashlib.sha256()
+            with open(installer_path, "rb") as f:
+                for chunk in iter(lambda: f.read(1024 * 256), b""):
+                    verify_hasher.update(chunk)
+            if verify_hasher.hexdigest() != self._pending_installer_sha256:
+                raise ValueError("installer file changed on disk since it was downloaded")
+        except (OSError, ValueError) as e:
+            self._pending_installer_path = None
+            self._pending_installer_sha256 = None
+            self._push("__onUpdateError", f"Update verification failed: {e}")
+            return {"ok": False}
 
         # This process is about to be replaced. installer.iss's
         # CloseApplications=yes would eventually force-close us anyway, but
