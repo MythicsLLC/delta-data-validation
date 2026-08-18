@@ -50,6 +50,13 @@
 }
 
 * { box-sizing: border-box; }
+/* The browser's own [hidden] { display: none } rule has the same
+   specificity as any of this file's class-based `display` declarations
+   (.result-card, .update-banner, etc.), and author styles beat the UA
+   stylesheet on a tie — so without this, JS setting `el.hidden = true`
+   silently does nothing wherever a class also sets `display`. This single
+   rule is what actually makes the hidden attribute work everywhere. */
+[hidden] { display: none !important; }
 html, body {
   margin: 0; padding: 0;
   background: var(--paper);
