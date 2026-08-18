@@ -226,7 +226,8 @@ body.is-maximized .ez { display: none; }
 .steps__item.is-active { color: var(--ink); }
 .steps__item.is-active::after { transform: scaleX(1); }
 .steps__item.is-active .steps__num { color: var(--paper); background: var(--ink); border-color: var(--ink); }
-.steps__item:hover { color: var(--ink); }
+.steps__item:not(.is-locked):hover { color: var(--ink); }
+.steps__item.is-locked { opacity: .38; pointer-events: none; cursor: default; }
 
 .topbar__status {
   display: flex; align-items: center; gap: 8px;

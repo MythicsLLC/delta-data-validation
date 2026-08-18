@@ -165,7 +165,7 @@
   <main class="stage">
 
     <!-- ============ PANEL 1 — FILES ============ -->
-    <section class="panel" id="panel-files" data-reveal>
+    <section class="panel" id="panel-files">
       <span class="panel__tag">Form 01-A</span>
       <div class="panel__head">
         <span class="panel__eyebrow">Step 01</span>
@@ -219,7 +219,7 @@
     </section>
 
     <!-- ============ PANEL 2 — MAPPING ============ -->
-    <section class="panel" id="panel-mapping" data-reveal>
+    <section class="panel" id="panel-mapping" hidden>
       <span class="panel__tag">Form 01-B</span>
       <div class="panel__head">
         <span class="panel__eyebrow">Step 02</span>
@@ -245,10 +245,19 @@
         </div>
         <div class="mapping-empty" id="mappingEmpty">Load both files, then click <strong>Load Columns</strong> above.</div>
       </div>
+
+      <div class="panel__actions">
+        <button class="btn btn--ghost" id="btnMappingBack">&larr; Back</button>
+        <button class="btn btn--primary" id="btnMappingNext" disabled>
+          <span class="btn__label">Next: Options</span>
+          <svg class="btn__arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <span class="inline-msg" id="mappingNextMsg"></span>
+      </div>
     </section>
 
     <!-- ============ PANEL 3 — OPTIONS ============ -->
-    <section class="panel" id="panel-options" data-reveal>
+    <section class="panel" id="panel-options" hidden>
       <span class="panel__tag">Form 01-C</span>
       <div class="panel__head">
         <span class="panel__eyebrow">Step 03</span>
@@ -288,10 +297,18 @@
           </div>
         </label>
       </div>
+
+      <div class="panel__actions">
+        <button class="btn btn--ghost" id="btnOptionsBack">&larr; Back</button>
+        <button class="btn btn--primary" id="btnOptionsNext">
+          <span class="btn__label">Next: Run</span>
+          <svg class="btn__arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
     </section>
 
     <!-- ============ PANEL 4 — RUN & RESULTS ============ -->
-    <section class="panel panel--run" id="panel-run" data-reveal>
+    <section class="panel panel--run" id="panel-run" hidden>
       <span class="panel__tag">Form 01-D</span>
       <div class="panel__head">
         <span class="panel__eyebrow">Step 04</span>
@@ -305,6 +322,7 @@
           <span>Run Validation</span>
         </button>
         <button class="btn btn--ghost btn--danger" id="btnCancel" hidden>Cancel</button>
+        <button class="btn btn--ghost" id="btnRunBack">&larr; Back</button>
       </div>
 
       <div class="progress-block" id="progressBlock" hidden>

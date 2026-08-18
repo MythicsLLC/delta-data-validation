@@ -160,49 +160,78 @@
   }
 
   /* ---------------------------------------------------------------- */
-  /* Panel reveal + step nav (IntersectionObserver)                     */
+  /* Stepper — exactly one panel visible at a time. The top step nav and   */
+  /* each panel's Back/Next buttons all funnel through goToStep(); a step  */
+  /* only becomes reachable once its prerequisite is actually met (see    */
+  /* isStepUnlocked), so the nav can't be used to skip ahead of what's    */
+  /* actually been done yet.                                              */
   /* ---------------------------------------------------------------- */
-  function initReveal() {
-    const panels = Array.from(document.querySelectorAll('[data-reveal]'));
-    const navItems = Array.from(document.querySelectorAll('.steps__item'));
-    const idToStep = {
-      'panel-files': 'files', 'panel-mapping': 'mapping',
-      'panel-options': 'options', 'panel-run': 'run',
-    };
+  const STEP_ORDER = ['files', 'mapping', 'options', 'run'];
+  const STEP_PANEL_ID = {
+    files: 'panel-files', mapping: 'panel-mapping',
+    options: 'panel-options', run: 'panel-run',
+  };
+  let currentStep = 'files';
 
-    const revealObs = new IntersectionObserver((entries) => {
-      entries.forEach((e) => {
-        if (e.isIntersecting) {
-          e.target.classList.add('is-visible');
-          revealObs.unobserve(e.target);
-        }
-      });
-    }, { threshold: 0.12 });
-    panels.forEach((p) => revealObs.observe(p));
+  function isStepUnlocked(step) {
+    const idx = STEP_ORDER.indexOf(step);
+    if (idx <= 0) return true;
+    if (state.rows.length === 0) return false; // mapping/options/run all need columns loaded
+    if (idx >= 2 && !state.rows.some((r) => r.target)) return false; // options/run need >=1 mapped column
+    return true;
+  }
 
-    // Stagger the very first panel immediately so the page doesn't look empty on load.
-    requestAnimationFrame(() => panels[0] && panels[0].classList.add('is-visible'));
+  function updateStepNav() {
+    document.querySelectorAll('.steps__item').forEach((item) => {
+      const step = item.dataset.step;
+      item.classList.toggle('is-active', step === currentStep);
+      item.classList.toggle('is-locked', step !== currentStep && !isStepUnlocked(step));
+    });
+  }
 
-    const navObs = new IntersectionObserver((entries) => {
-      entries.forEach((e) => {
-        const step = idToStep[e.target.id];
-        const item = navItems.find((n) => n.dataset.step === step);
-        if (!item) return;
-        if (e.isIntersecting) {
-          navItems.forEach((n) => n.classList.remove('is-active'));
-          item.classList.add('is-active');
-        }
-      });
-    }, { threshold: 0.5, rootMargin: '-30% 0px -50% 0px' });
-    panels.forEach((p) => navObs.observe(p));
+  function updateStepGates() {
+    const mappedCount = state.rows.filter((r) => r.target).length;
+    $('btnMappingNext').disabled = mappedCount === 0;
+    $('mappingNextMsg').textContent = mappedCount === 0 ? 'Map at least one column to continue.' : '';
+    updateStepNav();
+  }
 
-    navItems.forEach((item) => {
+  function goToStep(step) {
+    if (step !== currentStep && !isStepUnlocked(step)) return;
+    currentStep = step;
+    STEP_ORDER.forEach((s) => {
+      const panel = document.getElementById(STEP_PANEL_ID[s]);
+      if (s === step) {
+        panel.hidden = false;
+        // Re-trigger the slide-in transition on every visit, not just the
+        // first: drop .is-visible, force a reflow, then re-add it.
+        panel.classList.remove('is-visible');
+        void panel.offsetWidth;
+        panel.classList.add('is-visible');
+      } else {
+        panel.hidden = true;
+      }
+    });
+    updateStepGates();
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  function initStepper() {
+    document.querySelectorAll('.steps__item').forEach((item) => {
       item.addEventListener('click', (e) => {
         e.preventDefault();
-        document.querySelector(item.getAttribute('href'))
-          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        goToStep(item.dataset.step);
       });
     });
+
+    $('btnMappingBack').addEventListener('click', () => goToStep('files'));
+    $('btnMappingNext').addEventListener('click', () => goToStep('options'));
+    $('btnOptionsBack').addEventListener('click', () => goToStep('mapping'));
+    $('btnOptionsNext').addEventListener('click', () => goToStep('run'));
+    $('btnRunBack').addEventListener('click', () => { if (!state.running) goToStep('options'); });
+
+    requestAnimationFrame(() => $('panel-files').classList.add('is-visible'));
+    updateStepGates();
   }
 
   /* ---------------------------------------------------------------- */
@@ -299,7 +328,7 @@
       const autoCount = state.rows.filter((r) => r.target).length;
       loadColumnsMsg.textContent =
         `Loaded ${state.sourceCols.length} source / ${state.targetCols.length} target columns — ${autoCount} auto-matched.`;
-      document.querySelector('#panel-mapping').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      goToStep('mapping');
     } catch (err) {
       loadColumnsMsg.className = 'inline-msg is-err';
       loadColumnsMsg.textContent = `Failed: ${err.message || err}`;
@@ -363,6 +392,7 @@
     mappingStats.textContent = state.rows.length
       ? `${visibleCount}/${state.rows.length} shown · ${mappedCount} mapped · ${keyCount} key`
       : 'No columns loaded';
+    updateStepGates();
   }
 
   mappingFilter.addEventListener('input', renderMappingTable);
@@ -401,6 +431,7 @@
       const mappedCount = state.rows.filter((r) => r.target).length;
       const keyCount = state.rows.filter((r) => r.key).length;
       mappingStats.textContent = `${state.rows.length}/${state.rows.length} shown · ${mappedCount} mapped · ${keyCount} key`;
+      updateStepGates();
     }
   });
 
@@ -503,6 +534,7 @@
     progressStage.textContent = 'Starting…';
     btnRun.disabled = true;
     btnCancel.hidden = false;
+    $('btnRunBack').disabled = true;
     setGlobalStatus('busy', 'Running');
     termLine('Starting validation…', 'is-dim');
 
@@ -526,6 +558,7 @@
     btnRun.disabled = false;
     btnCancel.hidden = true;
     btnCancel.disabled = false;
+    $('btnRunBack').disabled = false;
     state.running = false;
   }
 
@@ -762,7 +795,7 @@
   initTitlebar();
   initUpdateBanner();
   initWelcome();
-  initReveal();
+  initStepper();
   initDropzones();
   initTicketStrip();
 
