@@ -384,6 +384,19 @@
     state.rows[i][role] = !state.rows[i][role];
     btn.classList.toggle('is-on', state.rows[i][role]);
     btn.setAttribute('aria-checked', String(state.rows[i][role]));
+
+    // A Key column drives row-matching, so it always needs to travel with
+    // the comparison — turning Key on implicitly turns Include on too, same
+    // row, kept in sync without a full table re-render.
+    if (role === 'key' && state.rows[i].key && !state.rows[i].include) {
+      state.rows[i].include = true;
+      const includeBtn = mappingTable.querySelector(`.switch[data-role="include"][data-i="${i}"]`);
+      if (includeBtn) {
+        includeBtn.classList.add('is-on');
+        includeBtn.setAttribute('aria-checked', 'true');
+      }
+    }
+
     if (role === 'key' || role === 'target') {
       const mappedCount = state.rows.filter((r) => r.target).length;
       const keyCount = state.rows.filter((r) => r.key).length;
