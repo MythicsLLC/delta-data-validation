@@ -59,6 +59,18 @@ jobs:
         shell: cmd
         run: build_exe.bat
 
+      - name: Selftest the built exe (catches missing bundled dependencies)
+        shell: cmd
+        run: |
+          dist\DeltaDataValidation\DeltaDataValidation.exe --selftest
+          if errorlevel 1 (
+            echo SELFTEST FAILED:
+            type "%TEMP%\pva_selftest_result.txt"
+            exit /b 1
+          )
+          echo Selftest passed:
+          type "%TEMP%\pva_selftest_result.txt"
+
       - name: Build installer (Inno Setup)
         shell: cmd
         working-directory: installer

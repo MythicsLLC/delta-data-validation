@@ -4,6 +4,7 @@
 # on Windows 11 / most updated Windows 10).
 pandas
 polars
+pyarrow  # not a hard dep of polars itself, but validation_core.py's df.to_pandas() calls need it
 python-calamine
 fastexcel
 xlsxwriter

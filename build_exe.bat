@@ -25,6 +25,14 @@ REM NOTE on excludes: --collect-all polars pulls in polars' optional cloud-
 REM storage extras (S3/boto3, SQL/sqlalchemy, SSH/paramiko, etc.) which this
 REM app never uses since it only reads local files. Excluding them keeps the
 REM install smaller for no functional loss.
+REM
+REM NOTE on pyarrow: not imported anywhere at module load time, so
+REM PyInstaller's static analysis can't see it — but validation_core.py's
+REM df.to_pandas() calls pull it in lazily at runtime. Without this explicit
+REM --collect-all, those calls fail with "No module named 'pyarrow'" only in
+REM the frozen exe (a dev machine's Python env can easily have pyarrow
+REM installed already from something else, masking this until you actually
+REM run the built exe).
 
 setlocal
 cd /d "%~dp0"
@@ -44,6 +52,7 @@ python -m PyInstaller ^
     --add-data "webapp;webapp" ^
     --add-data "VERSION;." ^
     --collect-all polars ^
+    --collect-all pyarrow ^
     --collect-all python_calamine ^
     --collect-all fastexcel ^
     --collect-all xlsxwriter ^
