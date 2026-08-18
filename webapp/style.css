@@ -64,8 +64,16 @@ html, body {
   font-family: var(--display);
   font-size: 15px;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  height: 100%;
+  overflow: hidden;
 }
+/* Fixed-viewport app shell: the window itself never scrolls. chrome-stack
+   (titlebar/banner/step-nav) and .footer keep their natural height; .stage
+   fills whatever's left and hands that space to whichever single .panel is
+   visible, which scrolls its own .panel__body internally when its content
+   is taller than the space available — Back/Next/step-nav stay reachable
+   without ever having to scroll past them. */
+body { display: flex; flex-direction: column; }
 ::selection { background: var(--accent); color: var(--accent-ink); }
 
 ::-webkit-scrollbar { width: 11px; height: 11px; }
@@ -102,7 +110,7 @@ button { font-family: inherit; cursor: pointer; }
 /* ---------------------------------------------------------------------- */
 :root { --titlebar-h: 38px; }
 
-.chrome-stack { position: sticky; top: 0; z-index: 70; }
+.chrome-stack { flex-shrink: 0; position: relative; z-index: 70; }
 
 /* ---------------------------------------------------------------------- */
 /* Custom OS titlebar — the window is frameless; this IS the caption bar   */
@@ -206,27 +214,52 @@ body.is-maximized .ez { display: none; }
   letter-spacing: .1em; text-transform: uppercase;
 }
 
-.steps { display: flex; gap: 2px; margin-left: 12px; flex: 1; }
+.steps { display: flex; align-items: flex-start; margin-left: 12px; flex: 1; }
 .steps__item {
   position: relative;
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 14px; color: var(--ink-faint); text-decoration: none;
-  font-size: 12.5px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 2px 4px; color: var(--ink-faint); text-decoration: none;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  text-align: center;
 }
-.steps__item::after {
-  content: ''; position: absolute; left: 14px; right: 14px; bottom: 2px; height: 2px;
-  background: var(--accent); transform: scaleX(0); transform-origin: left;
-  transition: transform .3s var(--ease-hard);
+/* Connecting line: the segment BEHIND each circle, reaching back to the
+   previous one — a separate element (not the circle's own border) so it
+   can be layered under the circle and colored independently of it. */
+.steps__item:not(:first-child)::before {
+  content: '';
+  position: absolute; top: 15px; right: 50%; width: 100%; height: 2px;
+  background: var(--ink-faint); z-index: 0;
+  transition: background .25s var(--ease-hard);
+}
+.steps__item.is-done + .steps__item::before { background: var(--ink); }
+
+.steps__circle {
+  position: relative; z-index: 1;
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--ink-faint); background: var(--paper);
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s var(--ease-hard), border-color .2s var(--ease-hard);
 }
 .steps__num {
   font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint);
-  border: 1.5px solid var(--ink-faint); padding: 1px 5px;
-  transition: all .2s var(--ease-hard);
+  transition: color .2s var(--ease-hard);
 }
-.steps__item.is-active { color: var(--ink); }
-.steps__item.is-active::after { transform: scaleX(1); }
-.steps__item.is-active .steps__num { color: var(--paper); background: var(--ink); border-color: var(--ink); }
-.steps__item:not(.is-locked):hover { color: var(--ink); }
+.steps__check {
+  display: none; width: 13px; height: 13px;
+  fill: none; stroke: var(--paper); stroke-width: 3.2; stroke-linecap: square;
+}
+.steps__label { transition: color .2s var(--ease-hard); }
+
+.steps__item.is-active .steps__circle { border-color: var(--accent); background: var(--accent); }
+.steps__item.is-active .steps__num { color: var(--accent-ink); }
+.steps__item.is-active .steps__label { color: var(--ink); }
+
+.steps__item.is-done .steps__circle { border-color: var(--ink); background: var(--ink); }
+.steps__item.is-done .steps__num { display: none; }
+.steps__item.is-done .steps__check { display: block; }
+
+.steps__item:not(.is-locked):hover .steps__circle { border-color: var(--ink); }
 .steps__item.is-locked { opacity: .38; pointer-events: none; cursor: default; }
 
 .topbar__status {
@@ -246,9 +279,10 @@ body.is-maximized .ez { display: none; }
 /* ---------------------------------------------------------------------- */
 .stage {
   position: relative; z-index: 1;
-  max-width: 1040px; margin: 0 auto;
-  padding: 52px 28px 100px;
-  display: flex; flex-direction: column; gap: 40px;
+  max-width: 1040px; width: 100%; margin: 0 auto;
+  padding: 28px 28px 0;
+  display: flex; flex-direction: column;
+  flex: 1; min-height: 0;
 }
 .panel {
   background: var(--paper);
@@ -258,6 +292,8 @@ body.is-maximized .ez { display: none; }
   position: relative;
   opacity: 0; transform: translateX(var(--enter-x, -26px));
   transition: opacity .5s var(--ease-hard), transform .5s var(--ease-snap);
+  display: flex; flex-direction: column;
+  flex: 1; min-height: 0; margin-bottom: 20px;
 }
 .panel:nth-of-type(even) { --enter-x: 26px; }
 .panel.is-visible { opacity: 1; transform: translateX(0); }
@@ -274,6 +310,11 @@ body.is-maximized .ez { display: none; }
 }
 .panel__title { font-size: 27px; font-weight: 900; margin-bottom: 8px; letter-spacing: -.01em; }
 .panel__hint { color: var(--ink-soft); font-size: 13.5px; line-height: 1.55; }
+
+/* The only region inside a panel that scrolls — .panel__head above and
+   .panel__actions/.run-controls below stay fixed in place regardless of
+   how tall this content gets. */
+.panel__body { flex: 1; min-height: 0; overflow-y: auto; }
 
 /* ---------------------------------------------------------------------- */
 /* Dropzones — declaration slots                                           */
@@ -362,7 +403,7 @@ body.is-maximized .ez { display: none; }
 .btn--run:not(:disabled):active { transform: translate(7px, 7px); box-shadow: 0 0 0 var(--ink); }
 .btn--run__glow { display: none; }
 
-.panel__actions { margin-top: 22px; display: flex; align-items: center; gap: 14px; }
+.panel__actions { margin-top: 22px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
 .inline-msg { font-size: 12.5px; color: var(--ink-faint); font-family: var(--mono); }
 .inline-msg.is-err { color: var(--err); font-weight: 700; }
 .inline-msg.is-ok { color: var(--ok); font-weight: 700; }
@@ -452,7 +493,7 @@ body.is-maximized .ez { display: none; }
 /* ---------------------------------------------------------------------- */
 /* Run panel                                                                 */
 /* ---------------------------------------------------------------------- */
-.run-controls { display: flex; gap: 14px; align-items: center; }
+.run-controls { display: flex; gap: 14px; align-items: center; flex-shrink: 0; margin-bottom: 22px; }
 
 .progress-block { margin-top: 26px; }
 .ticket-strip { display: flex; gap: 3px; }
@@ -544,7 +585,7 @@ body.is-maximized .ez { display: none; }
 /* ---------------------------------------------------------------------- */
 /* Footer + toasts                                                          */
 /* ---------------------------------------------------------------------- */
-.footer { text-align: center; color: var(--ink-faint); font-size: 11.5px; font-family: var(--mono); padding-top: 8px; }
+.footer { text-align: center; color: var(--ink-faint); font-size: 11.5px; font-family: var(--mono); padding: 8px 0 16px; flex-shrink: 0; }
 
 .toasts { position: fixed; bottom: 22px; right: 22px; z-index: 100; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
 .toast {
@@ -564,7 +605,7 @@ body.is-maximized .ez { display: none; }
   .options-grid { grid-template-columns: 1fr; }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
   .stat-card:nth-child(2) { border-right: none; }
-  .steps span:not(.steps__num) { display: none; }
+  .steps__label { display: none; }
 }
 
 /* ==========================================================================

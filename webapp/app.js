@@ -182,9 +182,12 @@
   }
 
   function updateStepNav() {
+    const currentIdx = STEP_ORDER.indexOf(currentStep);
     document.querySelectorAll('.steps__item').forEach((item) => {
       const step = item.dataset.step;
+      const idx = STEP_ORDER.indexOf(step);
       item.classList.toggle('is-active', step === currentStep);
+      item.classList.toggle('is-done', idx < currentIdx);
       item.classList.toggle('is-locked', step !== currentStep && !isStepUnlocked(step));
     });
   }

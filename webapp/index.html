@@ -71,16 +71,32 @@
 
     <nav class="steps" id="stepNav" aria-label="Workflow steps">
       <a href="#panel-files" data-step="files" class="steps__item is-active">
-        <span class="steps__num">01</span><span>Files</span>
+        <span class="steps__circle">
+          <span class="steps__num">01</span>
+          <svg class="steps__check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+        </span>
+        <span class="steps__label">Files</span>
       </a>
       <a href="#panel-mapping" data-step="mapping" class="steps__item">
-        <span class="steps__num">02</span><span>Mapping</span>
+        <span class="steps__circle">
+          <span class="steps__num">02</span>
+          <svg class="steps__check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+        </span>
+        <span class="steps__label">Mapping</span>
       </a>
       <a href="#panel-options" data-step="options" class="steps__item">
-        <span class="steps__num">03</span><span>Options</span>
+        <span class="steps__circle">
+          <span class="steps__num">03</span>
+          <svg class="steps__check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+        </span>
+        <span class="steps__label">Options</span>
       </a>
       <a href="#panel-run" data-step="run" class="steps__item">
-        <span class="steps__num">04</span><span>Run</span>
+        <span class="steps__circle">
+          <span class="steps__num">04</span>
+          <svg class="steps__check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+        </span>
+        <span class="steps__label">Run</span>
       </a>
     </nav>
 
@@ -173,6 +189,7 @@
         <p class="panel__hint">Drop a file or browse. Excel workbooks with multiple sheets will let you pick one.</p>
       </div>
 
+      <div class="panel__body">
       <div class="streams">
         <div class="dropzone" data-side="source" id="dz-source" tabindex="0" role="button" aria-label="Choose Source file">
           <div class="dropzone__glow"></div>
@@ -208,6 +225,7 @@
           </div>
         </div>
       </div>
+      </div>
 
       <div class="panel__actions">
         <button class="btn btn--primary" id="btnLoadColumns" disabled>
@@ -227,6 +245,7 @@
         <p class="panel__hint">Choose the Target column for each Source column you want compared, then flag Key / Date / Include.</p>
       </div>
 
+      <div class="panel__body">
       <div class="mapping-toolbar">
         <div class="search">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -244,6 +263,7 @@
           <span class="center">Include</span>
         </div>
         <div class="mapping-empty" id="mappingEmpty">Load both files, then click <strong>Load Columns</strong> above.</div>
+      </div>
       </div>
 
       <div class="panel__actions">
@@ -265,6 +285,7 @@
         <p class="panel__hint">Labels appear in the report headers. Output folder is where the result workbook is written.</p>
       </div>
 
+      <div class="panel__body">
       <div class="options-grid">
         <label class="field">
           <span class="field__label">Source label</span>
@@ -297,6 +318,7 @@
           </div>
         </label>
       </div>
+      </div>
 
       <div class="panel__actions">
         <button class="btn btn--ghost" id="btnOptionsBack">&larr; Back</button>
@@ -325,6 +347,7 @@
         <button class="btn btn--ghost" id="btnRunBack">&larr; Back</button>
       </div>
 
+      <div class="panel__body">
       <div class="progress-block" id="progressBlock" hidden>
         <div class="ticket-strip" id="ticketStrip"></div>
         <div class="progress-meta">
@@ -374,6 +397,7 @@
           <h3>Cancelled</h3>
           <p>Validation was stopped before it finished.</p>
         </div>
+      </div>
       </div>
     </section>
 
